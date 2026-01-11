@@ -1,61 +1,49 @@
-import './App.css';
+import { Routes, Route } from 'react-router-dom';
+import { lazy, Suspense } from 'react'; // Import lazy and Suspense
+import ProtectedRoute from './routes/ProtectedRoute';
+import Navbar from './components/Navbar';
 
-function App() {
+// Lazy load the components
+const Auth = lazy(() => import('./pages/public/Auth'));
+const Home = lazy(() => import('./pages/public/Home'));
+const Collections = lazy(() => import('./pages/public/Collections'));
+const UserDashboard = lazy(() => import('./pages/user/Dashboard'));
+const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
+const AffiliateDashboard = lazy(() => import('./pages/affiliate/Dashboard'));
+const NotFound = lazy(() => import('./pages/public/NotFound'));
+
+export default function App() {
+  const user = { role: 'guest' };
+
   return (
-    <div className="app">
-      {/* Header */}
-      <header className="header">
-        <nav className="navbar">
-          <div className="logo">AnjoaurA</div>
-          <ul className="nav-links">
-            <li><a href="#home">Home</a></li>
-            <li><a href="#features">Features</a></li>
-            <li><a href="#about">About</a></li>
-            <li><a href="#contact">Contact</a></li>
-          </ul>
-        </nav>
-      </header>
+    <>
+      <Navbar userRole={user.role} />
+      {/* Suspense shows a loader while the specific page code is being downloaded */}
+      <Suspense fallback={<div>Loading Page...</div>}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/collections" element={<Collections />} />
+          <Route path="/welcome" element={<WelcomePage />} />
 
-      {/* Hero Section */}
-      <section id="home" className="hero">
-        <div className="hero-content">
-          <h1>Welcome to AnjoaurA</h1>
-          <p>Discover amazing features and services</p>
-          <button className="cta-button">Get Started</button>
-        </div>
-      </section>
+          {/* ADD THIS LINE: The path to your Login/Signup page */}
+          <Route path="/auth" element={<Auth />} />
 
-      {/* Features Section */}
-      <section id="features" className="features">
-        <h2>Features</h2>
-        <div className="features-grid">
-          <div className="feature-card">
-            <h3>Feature 1</h3>
-            <p>Description of your first feature</p>
-          </div>
-          <div className="feature-card">
-            <h3>Feature 2</h3>
-            <p>Description of your second feature</p>
-          </div>
-          <div className="feature-card">
-            <h3>Feature 3</h3>
-            <p>Description of your third feature</p>
-          </div>
-        </div>
-      </section>
+          {/* Admin and other roles only load their code when needed */}
+          <Route element={<ProtectedRoute allowedRoles={['admin']} userRole={user.role} />}>
+            <Route path="/admin" element={<AdminDashboard />} />
+          </Route>
 
-      {/* About Section */}
-      <section id="about" className="about">
-        <h2>About Us</h2>
-        <p>Learn more about AnjoaurA and what we do.</p>
-      </section>
+          <Route element={<ProtectedRoute allowedRoles={['affiliate', 'admin']} userRole={user.role} />}>
+            <Route path="/affiliate" element={<AffiliateDashboard />} />
+          </Route>
 
-      {/* Footer */}
-      <footer className="footer">
-        <p>&copy; 2026 AnjoaurA. All rights reserved.</p>
-      </footer>
-    </div>
+          <Route element={<ProtectedRoute allowedRoles={['user', 'admin', 'affiliate']} userRole={user.role} />}>
+            <Route path="/dashboard" element={<UserDashboard />} />
+          </Route>
+
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </>
   );
 }
-
-export default App;
