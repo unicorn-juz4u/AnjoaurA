@@ -1,14 +1,18 @@
-// src/components/ProtectedRoute.jsx
-import { Navigate } from 'react-router-dom';
-import { useAuthStore } from '../store/useAuthStore';
+import { Navigate, Outlet } from "react-router-dom";
+import { useAuthStore } from "../store/useAuthStore";
 
-export const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ allowedRoles, userRole }) => {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
     if (!isAuthenticated) {
-        // Redirect to your public welcome page
         return <Navigate to="/welcome" replace />;
     }
 
-    return children;
+    if (!allowedRoles.includes(userRole)) {
+        return <Navigate to="/" replace />; // Or a dedicated "Unauthorized" page
+    }
+
+    return <Outlet />;
 };
+
+export default ProtectedRoute;

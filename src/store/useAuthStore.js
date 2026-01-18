@@ -6,12 +6,21 @@ export const useAuthStore = create(
         (set) => ({
             user: null,
             token: null,
-            setAuth: (user, token) => set({ user, token }),
+            isAuthenticated: false,
+
+            // Action to handle successful login
+            login: (userData, token) => set({
+                user: userData,
+                token: token,
+                isAuthenticated: true
+            }),
+
+            // Action to handle logout
             logout: () => {
-                set({ user: null, token: null });
-                localStorage.removeItem('anjoaura-auth');
-            }
+                localStorage.removeItem('token'); // Clear local token
+                set({ user: null, token: null, isAuthenticated: false });
+            },
         }),
-        { name: 'anjoaura-auth' }
+        { name: 'anjoaura-auth' } // Key for localStorage
     )
 );

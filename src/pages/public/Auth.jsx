@@ -1,53 +1,91 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import apiClient from '../../api/client';
 
 export default function Auth() {
-    const [isLogin, setIsLogin] = useState(true);
+    const [activeTab, setActiveTab] = useState('login'); // 'login' or 'signup'
     const [form, setForm] = useState({ name: '', email: '', password: '' });
-    const setAuth = useAuthStore((state) => state.setAuth);
+    const { login, user } = useAuthStore();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+
+    useEffect(() => {
+        if (user) {
+            navigate(user.role === 'admin' ? '/admin' : '/dashboard');
+        }
+    }, [user, navigate]);
+
+
+    const handleFormChange = (e) => {
+        setForm({ ...form, [e.target.name]: e.target.value });
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const url = isLogin ? 'login' : 'register';
-        const res = await fetch(`http://localhost:3000/api/auth/${url}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(form)
-        });
-        const data = await res.json();
+        const isLogin = activeTab === 'login';
+        const url = isLogin ? '/auth/login' : '/auth/register';
+        
+        try {
+            const payload = isLogin ? { email: form.email, password: form.password } : form;
+            const res = await apiClient.post(url, payload);
+            const data = res.data;
 
-        if (res.ok) {
             if (isLogin) {
-                setAuth(data.user, data.token);
-                navigate(data.user.role === 'admin' ? '/admin' : '/dashboard');
+                login(data.user, data.token);
             } else {
-                setIsLogin(true);
-                alert("Now please login.");
+                setActiveTab('login');
+                alert("Registration successful! Please login.");
             }
-        } else {
-            alert(data.message);
+        } catch (error) {
+            alert(error.response?.data?.message || 'An error occurred.');
         }
     };
+    
 
-    return (
-        <div className="max-w-md mx-auto mt-20 p-6 border rounded shadow">
-            <h2 className="text-2xl font-bold mb-4">{isLogin ? 'Login' : 'Sign Up'}</h2>
+
+    const renderForm = () => {
+        const isLogin = activeTab === 'login';
+        return (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 {!isLogin && (
-                    <input className="p-2 border" type="text" placeholder="Name"
-                        onChange={e => setForm({ ...form, name: e.target.value })} />
+                    <input className="p-3 border rounded-md" name="name" type="text" placeholder="Name" onChange={handleFormChange} required />
                 )}
-                <input className="p-2 border" type="email" placeholder="Email"
-                    onChange={e => setForm({ ...form, email: e.target.value })} />
-                <input className="p-2 border" type="password" placeholder="Password"
-                    onChange={e => setForm({ ...form, password: e.target.value })} />
-                <button className="bg-black text-white p-2 rounded">{isLogin ? 'Login' : 'Register'}</button>
+                <input className="p-3 border rounded-md" name="email" type="email" placeholder="Email" onChange={handleFormChange} required />
+                <input className="p-3 border rounded-md" name="password" type="password" placeholder="Password" onChange={handleFormChange} required />
+                <button className="bg-charcoal text-white p-3 rounded-md uppercase tracking-wider font-semibold hover:bg-opacity-90 transition-all">
+                    {isLogin ? 'Login' : 'Create Account'}
+                </button>
             </form>
-            <button onClick={() => setIsLogin(!isLogin)} className="mt-4 text-sm underline">
-                {isLogin ? "Need an account? Sign Up" : "Have an account? Login"}
-            </button>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-white p-8 border rounded-lg shadow-lg">
+                <div className="mb-8">
+                    <div className="flex border-b">
+                        <button 
+                            onClick={() => setActiveTab('login')}
+                            className={`flex-1 py-3 text-center font-semibold transition-all ${activeTab === 'login' ? 'text-charcoal border-b-2 border-charcoal' : 'text-gray-400'}`}
+                        >
+                            LOGIN
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('signup')}
+                            className={`flex-1 py-3 text-center font-semibold transition-all ${activeTab === 'signup' ? 'text-charcoal border-b-2 border-charcoal' : 'text-gray-400'}`}
+                        >
+                            SIGN UP
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex flex-col gap-6">
+
+                    
+                    {renderForm()}
+                </div>
+            </div>
         </div>
     );
 }
