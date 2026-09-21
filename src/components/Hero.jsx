@@ -1,14 +1,36 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CONFIG } from '../config';
 import ProductBundleVisual from './ProductBundleVisual';
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Download, Zap, CheckCircle2 } from 'lucide-react';
 import { trackEvent, ANALYTICS_EVENTS } from '../utils/analytics';
+import { fetchClaimedCount } from '../services/api';
 
 export default function Hero() {
+  const baseline = CONFIG.CLAIMED_COUNT_BASELINE || 71;
+  const [claimedCount, setClaimedCount] = useState(baseline + 1);
+  const [rawPaidOrders, setRawPaidOrders] = useState(baseline);
+  const [totalLimit, setTotalLimit] = useState(CONFIG.TOTAL_COPIES || 100);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchClaimedCount().then((res) => {
+      if (isMounted && res.success) {
+        setRawPaidOrders(res.count);
+        // Display next copy number to claim (e.g. 83 claimed => Copy 084)
+        const activeCopy = Math.max(1, Math.min(res.count + 1, res.limit || 100));
+        setClaimedCount(activeCopy);
+        if (res.limit) setTotalLimit(res.limit);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleCtaClick = (e) => {
     e.preventDefault();
     trackEvent(ANALYTICS_EVENTS.CHECKOUT_STARTED, { source: 'hero_cta' });
-    const target = document.getElementById("checkout-section") || document.getElementById("offer-section");
+    const target = document.getElementById("offer-section");
     if (target) {
       target.scrollIntoView({ behavior: "smooth" });
       setTimeout(() => {
@@ -18,105 +40,131 @@ export default function Hero() {
     }
   };
 
+  const formattedCopyNumber = String(claimedCount).padStart(3, '0');
+  const copiesRemaining = Math.max(0, totalLimit - rawPaidOrders);
+
   return (
-    <section className="relative pt-2 pb-6 sm:pt-6 sm:pb-10 overflow-hidden">
-      {/* Subtle ambient lighting garnish */}
-      <div className="absolute top-1/3 left-1/4 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-yellow-400/[0.04] rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-cyan-400/[0.03] rounded-full blur-3xl pointer-events-none" />
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
+    <section className="relative pt-4 pb-8 sm:pt-8 sm:pb-12 border-b border-[#15120F]/15 bg-[#EDE3CE]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
         
-        {/* Responsive Grid: Stacks cleanly on mobile, 2-col on desktop */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
+        {/* Main Hero Container */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
 
-          {/* TEXT & ACTION COLUMN */}
+          {/* Editorial Column */}
           <div className="lg:col-span-7 flex flex-col text-left">
             
-            {/* Eyebrow badge */}
-            <div className="inline-flex items-center gap-1.5 w-fit bg-yellow-400/10 border border-yellow-400/25 rounded-full px-3 py-1 mb-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
-              <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-yellow-400">
-                DIGITAL CREATOR LAUNCH SYSTEM
+            {/* 1 & 2. WHAT & WHO: Explicit Category & Audience Identifier */}
+            <div className="flex flex-wrap items-center gap-2 mb-2.5">
+              <span className="font-mono-ledger text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#375E42] bg-[#375E42]/10 px-2.5 py-1 rounded-xs border border-[#375E42]/20">
+                5-Module Client Acquisition Playbook
+              </span>
+              <span className="font-mono-ledger text-[11px] sm:text-xs text-[#6B6250] font-medium">
+                For Beginners With A Skill But No Clients Yet
               </span>
             </div>
 
-            {/* Main Headline: 3 balanced lines mapping to the 3-engine stages */}
-            <h1 className="text-2xl min-[390px]:text-3xl sm:text-4xl lg:text-[32px] xl:text-[36px] font-black text-white tracking-tight leading-[1.14] mb-3">
-              <span className="block">VALIDATE THE IDEA.</span>
-              <span className="block">BUILD THE EXPERIENCE.</span>
-              <span className="text-yellow-400 block">CREATE THE VISUALS.</span>
+            {/* Headline: Upright Sora, Weight 800, Tight Leading */}
+            <h1 className="font-headline text-[28px] leading-[1.10] min-[400px]:text-[32px] min-[400px]:leading-[1.12] sm:text-[42px] lg:text-[44px] sm:leading-[1.12] font-extrabold text-[#15120F] tracking-tight mb-3">
+              Turn One Skill Into Your First $100 Online — This Week
             </h1>
 
-            {/* Supporting sentence */}
-            <p className="text-xs sm:text-sm text-slate-300 font-normal leading-relaxed mb-4 max-w-lg">
-              A practical 3-resource system to help you move from digital idea to execution.
+            {/* Subhead: Upright, No Italic, High Legibility Mobile Size (+1-2px) */}
+            <p className="text-[16px] min-[400px]:text-[17px] sm:text-[18px] text-[#15120F]/90 font-normal leading-relaxed mb-4 max-w-xl">
+              A 5-module playbook for beginners with no clients yet: outreach scripts, a pricing template, and a payment setup — nothing to figure out alone.
             </p>
 
-            {/* Mobile Product Visual with compact spacing */}
-            <div className="block lg:hidden my-3">
-              <ProductBundleVisual size="mobile-hero" showBadge={false} />
-            </div>
-
-            {/* 3 Deliverables: Mobile-optimized, lightweight micro-cards without bulky box clutter */}
-            <div className="flex flex-col gap-1.5 sm:gap-2 mb-4 sm:mb-5 max-w-lg w-full">
-              {/* Deliverable 01 */}
-              <div className="flex items-center gap-2.5 px-3 py-2 sm:py-2.5 rounded-xl bg-slate-900/60 border border-yellow-400/20 text-left backdrop-blur-sm shadow-md">
-                <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-yellow-400/15 text-yellow-300 border border-yellow-400/30 shrink-0">
-                  01 VALIDATE
-                </span>
-                <span className="text-xs sm:text-[13px] font-medium text-slate-100 leading-snug">
-                  Problem Solving & Digital Monetization Guide
-                </span>
+            {/* 3. WHAT DO I GET: Explicit Named Deliverables (Visible in First Screen) */}
+            <div className="bg-[#F6F0E2] border border-[#15120F]/15 rounded-xs p-3 sm:p-3.5 mb-5 shadow-xs">
+              <div className="text-[11px] font-mono-ledger font-semibold text-[#6B6250] uppercase tracking-wider mb-2">
+                What You Get Immediately Inside:
               </div>
-
-              {/* Deliverable 02 */}
-              <div className="flex items-center gap-2.5 px-3 py-2 sm:py-2.5 rounded-xl bg-slate-900/60 border border-cyan-400/20 text-left backdrop-blur-sm shadow-md">
-                <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-400/15 text-cyan-300 border border-cyan-400/30 shrink-0">
-                  02 BUILD
-                </span>
-                <span className="text-xs sm:text-[13px] font-medium text-slate-100 leading-snug">
-                  Antigravity + Claude Website Build Guide
-                </span>
-              </div>
-
-              {/* Deliverable 03 */}
-              <div className="flex items-center gap-2.5 px-3 py-2 sm:py-2.5 rounded-xl bg-slate-900/60 border border-yellow-400/20 text-left backdrop-blur-sm shadow-md">
-                <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-yellow-400/15 text-yellow-300 border border-yellow-400/30 shrink-0">
-                  03 CREATE
-                </span>
-                <span className="text-xs sm:text-[13px] font-medium text-slate-100 leading-snug">
-                  100+ Visual Prompt Shortcuts
-                </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-[13px] text-[#15120F]">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#375E42] shrink-0" />
+                  <span><strong>5-Module PDF Guide</strong> (Full Playbook)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#375E42] shrink-0" />
+                  <span><strong>Direct Outreach Scripts</strong> (Word-for-Word)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#375E42] shrink-0" />
+                  <span><strong>First-Offer Pricing Template</strong> & Scope</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#375E42] shrink-0" />
+                  <span><strong>Instant Payment Setup</strong> & Delivery Checklist</span>
+                </div>
               </div>
             </div>
 
-            {/* PRIMARY CTA BLOCK */}
-            <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
+            {/* 4. WHAT DOES IT COST & ACTION: Visible Above Fold */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4">
+              {/* Prominent Price Display */}
+              <div className="flex items-baseline gap-2 bg-[#F6F0E2] border border-[#15120F]/20 px-3 py-2 rounded-xs">
+                <span className="font-mono-ledger text-2xl sm:text-3xl font-bold text-[#15120F]">
+                  {CONFIG.PRICE}
+                </span>
+                <span className="font-mono-ledger text-sm text-[#6B6250] line-through">
+                  {CONFIG.ORIGINAL_PRICE}
+                </span>
+                <span className="font-mono-ledger text-[11px] font-bold text-[#375E42] uppercase tracking-wider bg-[#375E42]/10 px-1.5 py-0.5 rounded-xs">
+                  Save 43%
+                </span>
+              </div>
 
-              {/* Primary CTA Button */}
+              {/* Primary Action Button */}
               <a
                 href={CONFIG.PAYMENT_LINK}
                 onClick={handleCtaClick}
                 id="hero-primary-cta"
-                className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-300 active:scale-[0.98] text-slate-950 font-black text-base sm:text-lg py-3 px-8 rounded-xl transition-all duration-150 shadow-xl shadow-yellow-400/15 border border-yellow-300 cursor-pointer text-center"
+                className="group flex-1 inline-flex items-center justify-center gap-2 bg-[#375E42] hover:bg-[#2b4933] active:scale-[0.98] text-[#F6F0E2] font-mono-ledger font-bold text-base sm:text-lg py-3 px-6 rounded-xs shadow-md transition-all border border-[#233c2a] cursor-pointer text-center"
               >
-                <span>GET ALL 3 — {CONFIG.PRICE}</span>
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+                <span>GET THE PLAYBOOK — {CONFIG.PRICE}</span>
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </a>
+            </div>
 
-              {/* Under CTA microcopy */}
-              <p className="text-xs text-slate-400 mt-2 flex items-center justify-center sm:justify-start gap-1.5">
-                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>One-time payment • All 3 PDFs included • Instant access</span>
-              </p>
+            {/* HONEST SCARCITY MECHANIC: Directly Under CTA (Prominent & Real) */}
+            <div className="bg-[#F6F0E2]/80 border border-[#A6362A]/30 rounded-xs p-2.5 sm:p-3 mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="stamp-badge text-[11px] sm:text-xs">
+                    COPY NO. {formattedCopyNumber} OF {totalLimit}
+                  </div>
+                  <span className="font-mono-ledger text-xs font-semibold text-[#A6362A]">
+                    {rawPaidOrders} copies claimed at {CONFIG.PRICE}
+                  </span>
+                </div>
+                <div className="font-mono-ledger text-[11px] text-[#6B6250]">
+                  {copiesRemaining} remaining before price rises to {CONFIG.ORIGINAL_PRICE}
+                </div>
+              </div>
+            </div>
 
+            {/* Trust Strip */}
+            <div className="pt-3 border-t border-[#15120F]/15 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] sm:text-xs text-[#6B6250] font-mono-ledger">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#375E42] shrink-0" />
+                <span>Razorpay-secured checkout</span>
+              </div>
+              <span className="hidden sm:inline text-[#15120F]/20">•</span>
+              <div className="flex items-center gap-1.5">
+                <Download className="w-3.5 h-3.5 text-[#375E42] shrink-0" />
+                <span>Instant PDF download</span>
+              </div>
+              <span className="hidden sm:inline text-[#15120F]/20">•</span>
+              <div className="flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-[#B8933E] shrink-0" />
+                <span>One payment — no recurring charge</span>
+              </div>
             </div>
 
           </div>
 
-          {/* DESKTOP PRODUCT VISUAL COLUMN */}
-          <div className="hidden lg:flex lg:col-span-5 justify-center items-center">
-            <ProductBundleVisual size="default" showBadge={true} />
+          {/* Visual Column */}
+          <div className="lg:col-span-5 flex justify-center items-center">
+            <ProductBundleVisual copyNumber={formattedCopyNumber} size="default" />
           </div>
 
         </div>

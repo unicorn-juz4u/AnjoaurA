@@ -10,26 +10,26 @@ export default function LegalModal({ isOpen, modalType, onClose }) {
       title: 'Privacy Policy',
       icon: ShieldAlert,
       body: (
-        <div className="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
+        <div className="space-y-4 text-xs sm:text-sm text-[#15120F]/85 leading-relaxed font-sans">
           <p>
-            Your privacy is important to us. This policy outlines how your information is handled when browsing or purchasing the <strong>{CONFIG.BUNDLE_TITLE}</strong> on <strong>{CONFIG.BRAND_NAME}</strong>.
+            Your privacy is respected. This policy outlines how your information is handled when purchasing <strong>{CONFIG.PRODUCT_NAME}</strong> on <strong>{CONFIG.BRAND_NAME}</strong>.
           </p>
-          <h4 className="text-white font-bold text-sm">1. Information We Collect</h4>
+          <h4 className="text-[#15120F] font-bold text-sm font-serif-headline">1. Information We Collect</h4>
           <p>
-            When you initiate and complete an order via our payment processor (Razorpay), your email address and transaction identifiers are collected to authenticate and deliver your digital bundle and provide customer support. We never store or handle your sensitive card, CVV, or banking credentials on our servers.
+            When you complete an order via our payment processor (Razorpay), your email address and transaction identifiers are collected solely to authenticate and deliver your digital playbook and provide customer support. We never store or handle your credit/debit card numbers, CVVs, or banking passwords on our servers.
           </p>
-          <h4 className="text-white font-bold text-sm">2. Use of Information</h4>
+          <h4 className="text-[#15120F] font-bold text-sm font-serif-headline">2. Use of Information</h4>
           <p>
-            Collected details are used exclusively to process your order, deliver secure digital access tokens, send order receipts, and provide customer support. We do not sell, rent, or trade your personal details with any third parties.
+            Collected details are used exclusively to process your order, deliver secure digital access tokens, send transaction receipts, and respond to support inquiries. We never sell, rent, or trade your personal details with third-party advertisers.
           </p>
-          <h4 className="text-white font-bold text-sm">3. Security & Storage</h4>
+          <h4 className="text-[#15120F] font-bold text-sm font-serif-headline">3. Security & Storage</h4>
           <p>
-            All payment transactions are encrypted and processed through Razorpay's PCI-DSS compliant infrastructure. Server communications are encrypted via HTTPS/TLS.
+            All payment transactions are encrypted and processed through Razorpay's PCI-DSS compliant infrastructure. Server communications are strictly encrypted via HTTPS/TLS.
           </p>
-          <h4 className="text-white font-bold text-sm">4. Contact</h4>
+          <h4 className="text-[#15120F] font-bold text-sm font-serif-headline">4. Support Contact</h4>
           <p>
-            For any privacy-related requests or questions, please contact us at{' '}
-            <a href={`mailto:${CONFIG.SUPPORT_EMAIL}`} className="text-yellow-400 underline font-semibold">
+            For any privacy-related requests or data deletion, contact us at{' '}
+            <a href={`mailto:${CONFIG.SUPPORT_EMAIL}`} className="text-[#375E42] underline font-semibold">
               {CONFIG.SUPPORT_EMAIL}
             </a>.
           </p>
@@ -40,25 +40,21 @@ export default function LegalModal({ isOpen, modalType, onClose }) {
       title: 'Terms & Conditions',
       icon: FileText,
       body: (
-        <div className="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
+        <div className="space-y-4 text-xs sm:text-sm text-[#15120F]/85 leading-relaxed font-sans">
           <p>
-            By purchasing and accessing the <strong>{CONFIG.BUNDLE_TITLE}</strong> from <strong>{CONFIG.BRAND_NAME}</strong>, you agree to the following terms:
+            By purchasing and downloading <strong>{CONFIG.PRODUCT_NAME}</strong> from <strong>{CONFIG.BRAND_NAME}</strong>, you agree to the following terms:
           </p>
-          <h4 className="text-white font-bold text-sm">1. Educational & Practical Purpose</h4>
+          <h4 className="text-[#15120F] font-bold text-sm font-serif-headline">1. Educational Purpose & Disclaimer</h4>
           <p>
-            All content within the three bundle resources is provided for educational, practical, and informational purposes. It does not constitute financial, investment, legal, or guaranteed business earnings advice.
+            All content within this 5-module guide is provided for educational, practical, and informational purposes. It does not constitute financial, legal, or guaranteed business earnings advice. Results depend entirely on your own execution, skills, and effort.
           </p>
-          <h4 className="text-white font-bold text-sm">2. License & Intellectual Property</h4>
+          <h4 className="text-[#15120F] font-bold text-sm font-serif-headline">2. License & Intellectual Property</h4>
           <p>
-            Your purchase grants you a single, non-exclusive, non-transferable personal license to view and use the included guides and resources. Redistribution, reselling, public uploading, or sublicensing the materials is strictly prohibited.
+            Your purchase grants you a single, non-exclusive, non-transferable personal license to view, download, and implement the material. Redistribution, resale, public sharing, or unauthorized uploading of the PDF is strictly prohibited.
           </p>
-          <h4 className="text-white font-bold text-sm">3. Digital Delivery & Access</h4>
+          <h4 className="text-[#15120F] font-bold text-sm font-serif-headline">3. Digital Delivery</h4>
           <p>
-            All three resources are delivered electronically via secure download links immediately following successful payment verification.
-          </p>
-          <h4 className="text-white font-bold text-sm">4. No Guaranteed Outcomes</h4>
-          <p>
-            We make no warranties or guarantees regarding specific revenue, earnings, or business results. Your individual outcomes depend on your own execution, skills, and effort.
+            The playbook is delivered electronically via secure tokenized download immediately upon successful payment verification.
           </p>
         </div>
       ),
@@ -67,25 +63,22 @@ export default function LegalModal({ isOpen, modalType, onClose }) {
       title: 'Refund & Digital Delivery Policy',
       icon: RefreshCw,
       body: (
-        <div className="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
-          <h4 className="text-white font-bold text-sm">Digital Delivery Notice</h4>
+        <div className="space-y-4 text-xs sm:text-sm text-[#15120F]/85 leading-relaxed font-sans">
+          <h4 className="text-[#15120F] font-bold text-sm font-serif-headline">Digital Delivery Notice</h4>
           <p>
-            The <strong>{CONFIG.BUNDLE_TITLE}</strong> is a digital product delivered immediately upon successful payment verification through secure download links and online resource access.
+            <strong>{CONFIG.PRODUCT_NAME}</strong> is an instant-access digital product. Access is granted immediately upon successful payment verification through secure download tokens.
           </p>
-          <h4 className="text-white font-bold text-sm">Final Sale & Consumer Protection</h4>
+          <h4 className="text-[#15120F] font-bold text-sm font-serif-headline">Final Sale & Consumer Protection</h4>
           <p>
-            This is a digital product. Due to the nature of digital delivery, purchases are final and refunds are not generally offered after access or delivery.
+            Due to the immediate digital availability of this downloadable material, purchases are generally final once delivered. However, this policy does not limit any mandatory statutory consumer protection rights that apply under your local jurisdiction.
           </p>
+          <h4 className="text-[#15120F] font-bold text-sm font-serif-headline">Technical Issues & Duplicate Charges</h4>
           <p>
-            However, this policy does not limit or eliminate any mandatory statutory consumer rights that may apply in your jurisdiction under applicable consumer protection laws.
-          </p>
-          <h4 className="text-white font-bold text-sm">Technical Issues & Duplicate Transactions</h4>
-          <p>
-            If you experience technical difficulties receiving or downloading your files, or if you encounter duplicate charges due to a connection interruption, please contact us promptly at{' '}
-            <a href={`mailto:${CONFIG.SUPPORT_EMAIL}`} className="text-yellow-400 underline font-semibold">
+            If you encounter connection drops, duplicate charges, or download link errors, contact us immediately at{' '}
+            <a href={`mailto:${CONFIG.SUPPORT_EMAIL}`} className="text-[#375E42] underline font-semibold">
               {CONFIG.SUPPORT_EMAIL}
             </a>{' '}
-            with your Razorpay payment ID, and we will ensure you receive full access or resolve the duplicate charge.
+            with your Razorpay payment ID. We will promptly ensure you receive access or resolve duplicate transactions.
           </p>
         </div>
       ),
@@ -94,22 +87,22 @@ export default function LegalModal({ isOpen, modalType, onClose }) {
       title: 'Contact Support',
       icon: Mail,
       body: (
-        <div className="space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
+        <div className="space-y-4 text-xs sm:text-sm text-[#15120F]/85 leading-relaxed font-sans">
           <p>
-            Have questions about the bundle, your order receipt, or your download links? Our support team is here to assist you:
+            Have questions about your order or download access? Our customer desk is available to assist:
           </p>
-          <div className="p-4 rounded-2xl bg-slate-900/90 border border-white/10 flex flex-col gap-2">
-            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Official Support Email</span>
+          <div className="p-4 rounded bg-[#EDE3CE] border border-[#15120F]/15 flex flex-col gap-1.5 font-mono-ledger">
+            <span className="text-[10px] text-[#6B6250] uppercase font-bold tracking-wider">Support Email Desk</span>
             <a
               href={`mailto:${CONFIG.SUPPORT_EMAIL}`}
-              className="text-base font-bold text-yellow-400 hover:underline"
+              className="text-base font-bold text-[#375E42] hover:underline"
             >
               {CONFIG.SUPPORT_EMAIL}
             </a>
-            <span className="text-xs text-slate-400">Response time: Typically within 24-48 business hours</span>
+            <span className="text-xs text-[#6B6250]">Response time: Within 24 business hours</span>
           </div>
-          <p className="text-xs text-slate-400">
-            When contacting us regarding an existing purchase, please include the Razorpay payment or order ID shown on your confirmation screen or payment receipt.
+          <p className="text-xs text-[#6B6250] font-mono-ledger">
+            Please include the Razorpay Payment ID shown on your payment confirmation when inquiring about an order.
           </p>
         </div>
       ),
@@ -120,31 +113,24 @@ export default function LegalModal({ isOpen, modalType, onClose }) {
   const IconComponent = activeContent.icon;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#15120F]/75 backdrop-blur-xs animate-fadeIn">
       <div 
-        className="relative w-full max-w-lg bg-[#0E1526] border border-yellow-400/30 rounded-3xl p-6 sm:p-8 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+        className="relative w-full max-w-lg bg-[#F6F0E2] border-2 border-[#15120F]/30 rounded-lg p-6 sm:p-8 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col text-left"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
-          <div className="flex items-center gap-3">
-            <img
-              src="/favicon.png"
-              alt="Logo"
-              className="w-8 h-8 rounded-xl object-cover border border-yellow-400/30"
-            />
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-yellow-400/10 text-yellow-400 flex items-center justify-center">
-                <IconComponent className="w-3.5 h-3.5" />
-              </div>
-              <h3 className="text-base sm:text-lg font-black text-white">
-                {activeContent.title}
-              </h3>
+        <div className="flex items-center justify-between pb-3.5 border-b border-[#15120F]/15 mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded bg-[#375E42]/15 text-[#375E42] flex items-center justify-center">
+              <IconComponent className="w-4 h-4" />
             </div>
+            <h3 className="text-base sm:text-lg font-bold text-[#15120F] font-serif-headline">
+              {activeContent.title}
+            </h3>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded border border-[#15120F]/15 bg-[#EDE3CE] text-[#15120F] hover:bg-[#15120F]/10 flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -156,10 +142,10 @@ export default function LegalModal({ isOpen, modalType, onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="pt-4 mt-4 border-t border-white/10 flex justify-end">
+        <div className="pt-3.5 mt-4 border-t border-[#15120F]/15 flex justify-end">
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold text-xs rounded-xl cursor-pointer"
+            className="px-5 py-2 bg-[#375E42] hover:bg-[#2b4933] text-[#F6F0E2] font-mono-ledger font-semibold text-xs rounded cursor-pointer border border-[#233c2a]"
           >
             Close
           </button>

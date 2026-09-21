@@ -22,9 +22,11 @@ if (typeof window !== 'undefined') {
 }
 
 let isPixelInitialized = false;
+let hasViewContentTracked = false;
 
 /**
- * Initializes official Meta Pixel if configured via environment
+ * Initializes official Meta Pixel if configured via environment.
+ * Prevents multiple initializations if already initialized in index.html.
  */
 export function initMetaPixel() {
   if (typeof window === 'undefined') return;
@@ -37,11 +39,18 @@ export function initMetaPixel() {
     return;
   }
 
-  if (!isPixelInitialized && typeof window.fbq === 'function') {
+  // If already initialized in HTML or previously by script, do not re-run init
+  if (isPixelInitialized || window.__meta_pixel_initialized) {
+    isPixelInitialized = true;
+    window.__meta_pixel_initialized = true;
+    return;
+  }
+
+  if (typeof window.fbq === 'function') {
     try {
       window.fbq('init', pixelId);
       isPixelInitialized = true;
-      trackMetaPageView();
+      window.__meta_pixel_initialized = true;
       if (import.meta.env.DEV) {
         console.log(`[Meta Pixel] Initialized with Pixel ID: ${pixelId}`);
       }
@@ -88,15 +97,51 @@ export function trackMetaPageView() {
 }
 
 /**
- * Tracks ViewContent for Digital Creator Launch System offer
+ * Tracks ViewContent for Digital Creator Launch System offer.
+ * Strictly counted once per single visit/session to prevent duplicate tracking errors
+ * caused by React StrictMode, component re-renders, or re-mounting.
  */
 export function trackMetaViewContent() {
+  if (typeof window === 'undefined') return false;
+
+  // 1. In-memory guard: immediately block duplicate executions in same lifecycle
+  if (hasViewContentTracked) {
+    if (import.meta.env.DEV) {
+      console.log('[Meta Pixel ViewContent Guard] ViewContent already tracked in memory for this visit. Skipping duplicate.');
+    }
+    return false;
+  }
+
+  // 2. Session guard: ensure it only fires once per visit even across page refreshes
+  const sessionKey = 'meta_viewcontent_tracked_session';
+  try {
+    if (sessionStorage.getItem(sessionKey)) {
+      hasViewContentTracked = true;
+      if (import.meta.env.DEV) {
+        console.log('[Meta Pixel ViewContent Guard] ViewContent already tracked for this visit in sessionStorage. Skipping duplicate.');
+      }
+      return false;
+    }
+  } catch {
+    // sessionStorage disabled or unavailable
+  }
+
+  // Mark as tracked
+  hasViewContentTracked = true;
+  try {
+    sessionStorage.setItem(sessionKey, 'true');
+  } catch {
+    // sessionStorage write blocked
+  }
+
   trackMetaEvent('ViewContent', {
-    content_name: 'Digital Creator Launch System',
-    content_category: 'Digital Product Bundle',
-    value: 299,
+    content_name: 'Make Your First $100 Online',
+    content_category: 'Digital Playbook',
+    value: 199,
     currency: 'INR',
   });
+
+  return true;
 }
 
 /**
@@ -105,9 +150,9 @@ export function trackMetaViewContent() {
  */
 export function trackMetaInitiateCheckout(params = {}) {
   trackMetaEvent('InitiateCheckout', {
-    content_name: 'Digital Creator Launch System',
-    content_category: 'Digital Product Bundle',
-    value: params.value || 299,
+    content_name: 'Make Your First $100 Online',
+    content_category: 'Digital Playbook',
+    value: params.value || 199,
     currency: params.currency || 'INR',
     num_items: 1,
   });
@@ -120,10 +165,10 @@ export function trackMetaInitiateCheckout(params = {}) {
  *
  * @param {Object} params
  * @param {string} params.orderId - Razorpay Order ID used as deduplication reference
- * @param {number} [params.value=299]
+ * @param {number} [params.value=199]
  * @param {string} [params.currency='INR']
  */
-export function trackMetaPurchase({ orderId, value = 299, currency = 'INR' }) {
+export function trackMetaPurchase({ orderId, value = 199, currency = 'INR' }) {
   if (!orderId) {
     console.warn('[Meta Pixel Purchase Guard] orderId is required for purchase tracking');
     return false;
@@ -155,8 +200,8 @@ export function trackMetaPurchase({ orderId, value = 299, currency = 'INR' }) {
   trackMetaEvent(
     'Purchase',
     {
-      content_name: 'Digital Creator Launch System',
-      content_category: 'Digital Product Bundle',
+      content_name: 'Make Your First $100 Online',
+      content_category: 'Digital Playbook',
       value: value,
       currency: currency,
       num_items: 1,

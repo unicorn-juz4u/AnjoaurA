@@ -1,32 +1,51 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CONFIG } from '../config';
-import { ArrowRight, Mail, Download, Loader2, AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-react';
-import { createPaymentOrder, verifyPayment, getDownloadUrl } from '../services/api';
+import { ArrowRight, Mail, Loader2, AlertCircle, ShieldCheck, Check, X } from 'lucide-react';
+import { createPaymentOrder, verifyPayment, fetchClaimedCount } from '../services/api';
 import { loadRazorpayScript } from '../utils/razorpay';
 import {
   trackEvent,
   ANALYTICS_EVENTS,
   trackMetaViewContent,
   trackMetaInitiateCheckout,
-  trackMetaPurchase,
 } from '../utils/analytics';
 
 export default function OfferSection({ onOpenModal }) {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
-  const [ctaState, setCtaState] = useState('idle'); // idle | creating | razorpay | verifying | success | failed
+  const [ctaState, setCtaState] = useState('idle'); // idle | creating | razorpay | verifying | failed
   const [errorMessage, setErrorMessage] = useState('');
-  const [orderReceipt, setOrderReceipt] = useState(null);
+  const [claimedCount, setClaimedCount] = useState(CONFIG.CLAIMED_COUNT_BASELINE || 71);
+  const [totalLimit, setTotalLimit] = useState(CONFIG.TOTAL_COPIES || 100);
+
   const emailInputRef = useRef(null);
+  const hasTrackedViewRef = useRef(false);
 
   useEffect(() => {
-    trackEvent(ANALYTICS_EVENTS.OFFER_VIEW);
-    trackMetaViewContent();
+    if (!hasTrackedViewRef.current) {
+      hasTrackedViewRef.current = true;
+      trackEvent(ANALYTICS_EVENTS.OFFER_VIEW);
+      trackMetaViewContent();
+    }
+
+    let isMounted = true;
+    fetchClaimedCount().then((res) => {
+      if (isMounted && res.success) {
+        setClaimedCount(res.count);
+        if (res.limit) setTotalLimit(res.limit);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const validateEmailFormat = (val) => {
     if (!val || !val.trim()) {
-      return 'Enter your email to receive/access your purchase.';
+      return 'Enter your email to receive and access your download.';
     }
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!regex.test(val.trim())) {
@@ -59,10 +78,10 @@ export default function OfferSection({ onOpenModal }) {
     setErrorMessage('');
     setCtaState('creating');
     trackEvent(ANALYTICS_EVENTS.CHECKOUT_STARTED, { email: email.trim() });
-    trackMetaInitiateCheckout({ value: 299, currency: 'INR' });
+    trackMetaInitiateCheckout({ value: 199, currency: 'INR' });
 
     try {
-      // 1. Create order on backend (server authoritative price & currency: 29900 paise INR)
+      // 1. Create order on backend (server-authoritative price & currency: 19900 paise INR)
       const order = await createPaymentOrder(email.trim());
 
       // 2. Ensure Razorpay Checkout script is loaded
@@ -81,14 +100,14 @@ export default function OfferSection({ onOpenModal }) {
         amount: order.amount,
         currency: order.currency || 'INR',
         name: CONFIG.BRAND_NAME,
-        description: order.productName || CONFIG.BUNDLE_TITLE,
+        description: order.productName || CONFIG.PRODUCT_NAME,
         order_id: order.orderId,
         prefill: {
           email: email.trim(),
         },
         theme: {
-          color: '#facc15',
-          backdrop_color: '#070A12',
+          color: '#375E42',
+          backdrop_color: '#15120F',
         },
         handler: async function (response) {
           // Customer completed Razorpay payment -> verify server-side
@@ -103,25 +122,32 @@ export default function OfferSection({ onOpenModal }) {
             });
 
             if (verifyResult.success && verifyResult.paid) {
-              setCtaState('success');
-              setOrderReceipt({
+              // Persist delivery payload locally so /success can immediately consume it
+              const deliveryData = {
                 orderId: response.razorpay_order_id,
                 email: email.trim(),
-                resources: verifyResult.resources,
+                downloadUrl: verifyResult.downloadUrl || verifyResult.pdfUrl,
+                fullDownloadUrl: verifyResult.fullDownloadUrl || verifyResult.fullPdfUrl,
                 downloadToken: verifyResult.downloadToken,
-              });
+                filename: verifyResult.filename || 'Make-Your-First-100-Online.pdf',
+                paidAt: new Date().toISOString(),
+              };
+
+              try {
+                localStorage.setItem(`anjoaura_delivery_${response.razorpay_order_id}`, JSON.stringify(deliveryData));
+                sessionStorage.setItem('anjoaura_latest_delivery', JSON.stringify(deliveryData));
+              } catch (storageErr) {
+                console.warn('[Storage Warning]:', storageErr);
+              }
+
               trackEvent(ANALYTICS_EVENTS.PAYMENT_SUCCESS, {
                 orderId: response.razorpay_order_id,
                 amount: order.amount,
                 currency: order.currency,
               });
 
-              // Track Meta Purchase conversion strictly after verified successful payment
-              trackMetaPurchase({
-                orderId: response.razorpay_order_id,
-                value: 299,
-                currency: 'INR',
-              });
+              // Navigate directly to dedicated success page — Meta Purchase fires from /success
+              navigate(`/success?order=${encodeURIComponent(response.razorpay_order_id)}`);
             } else {
               setCtaState('failed');
               setErrorMessage(verifyResult.message || 'Payment verification failed. Please contact support.');
@@ -160,312 +186,271 @@ export default function OfferSection({ onOpenModal }) {
     }
   };
 
-  const handleResourceAccess = (resourceId) => {
-    trackEvent(ANALYTICS_EVENTS.RESOURCE_ACCESSED, { resourceId });
-  };
+  const percentClaimed = Math.min(100, Math.round((claimedCount / totalLimit) * 100));
 
   return (
-    <section id="offer-section" className="relative py-10 sm:py-16 bg-[#070b16] border-y border-white/5 scroll-mt-4">
+    <section id="offer-section" className="relative py-10 sm:py-16 bg-[#EDE3CE] border-b border-[#15120F]/15 scroll-mt-6">
       <div id="checkout-section" className="scroll-mt-16" />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6">
         
-        {/* Central Premium Offer Card */}
-        <div className="bg-[#0b1222] border-2 border-yellow-400/50 rounded-3xl p-6 sm:p-9 shadow-2xl relative">
+        {/* Receipt-Themed Offer Card */}
+        <div className="receipt-paper rounded-xs p-5 sm:p-8 text-left relative shadow-md">
           
-          {ctaState === 'success' && orderReceipt ? (
-            /* ==================================================
-               SUCCESS STATE: "YOUR COMPLETE TOOLKIT IS READY."
-               ================================================== */
-            <div className="text-center py-2 animate-fadeIn">
-              <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-3 border border-emerald-500/40">
-                <CheckCircle2 className="w-8 h-8" />
-              </div>
+          {/* Receipt Top Ledger Header */}
+          <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#15120F]/15 font-mono-ledger text-[11px] text-[#6B6250]">
+            <span>OFFICIAL ORDER LEDGER</span>
+            <span className="text-[#A6362A] font-bold uppercase">INTRODUCTORY TIER // {CONFIG.PRICE}</span>
+          </div>
 
-              <span className="text-xs uppercase tracking-widest font-black text-yellow-400 block mb-1">
-                PURCHASE CONFIRMED
+          {/* Header Title */}
+          <div className="mb-4">
+            <h2 className="font-headline text-2xl sm:text-3xl font-extrabold text-[#15120F] tracking-tight">
+              Get The Complete 5-Part Playbook
+            </h2>
+            <p className="text-xs sm:text-sm text-[#6B6250] mt-1 font-sans">
+              Instant tokenized access upon payment. Everything you receive is explicitly itemized below.
+            </p>
+          </div>
+
+          {/* Compact 4-Line Without / With Comparison Block (~120px height) */}
+          <div className="my-4 p-3 sm:p-4 rounded-xs bg-[#EDE3CE]/80 border border-[#15120F]/15 text-xs font-sans">
+            <div className="font-mono-ledger text-[10px] uppercase font-bold text-[#6B6250] tracking-wider mb-2">
+              Why Beginners Choose This Playbook
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="space-y-1.5 text-[#15120F]/80">
+                <div className="flex items-start gap-1.5 text-[#A6362A]">
+                  <X className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span className="text-[#15120F]">Guessing pricing & underselling skills</span>
+                </div>
+                <div className="flex items-start gap-1.5 text-[#A6362A]">
+                  <X className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span className="text-[#15120F]">Staring at blank DMs wondering what to say</span>
+                </div>
+              </div>
+              <div className="space-y-1.5 text-[#15120F]">
+                <div className="flex items-start gap-1.5 text-[#375E42]">
+                  <Check className="w-3.5 h-3.5 shrink-0 mt-0.5 font-bold" />
+                  <span>Tested first-offer pricing worksheet</span>
+                </div>
+                <div className="flex items-start gap-1.5 text-[#375E42]">
+                  <Check className="w-3.5 h-3.5 shrink-0 mt-0.5 font-bold" />
+                  <span>Word-for-word client outreach scripts</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action-Item Pull-Quote from Module 1 */}
+          <div className="my-4 p-3.5 rounded-xs bg-[#EDE3CE] border-l-3 border-[#B8933E] text-left">
+            <blockquote className="italic text-xs sm:text-sm text-[#15120F] leading-relaxed">
+              “Take that first step, jump that first hurdle and you’ll never look back. Once you’ve made your first $100 online, replicating the system is simple.”
+            </blockquote>
+            <div className="mt-1.5 flex items-center gap-2 text-[10px] text-[#6B6250] font-mono-ledger uppercase font-semibold">
+              <span>— Module 1 Action Item</span>
+              <span>•</span>
+              <span>Clarity & Fundamentals</span>
+            </div>
+          </div>
+
+          {/* Real-time Claimed Copies Progress Bar */}
+          <div className="my-4 p-3 rounded-xs bg-[#EDE3CE] border border-[#15120F]/15">
+            <div className="flex justify-between items-center text-xs font-mono-ledger mb-1.5">
+              <span className="text-[#15120F] font-semibold">
+                Copies Claimed At Introductory Rate:
               </span>
-              <h3 className="text-2xl sm:text-4xl font-black text-white tracking-tight mb-2">
-                YOUR COMPLETE TOOLKIT IS READY.
-              </h3>
-              <p className="text-xs sm:text-base text-emerald-200 mb-6 max-w-lg mx-auto">
-                Your three resources are ready to access.
-              </p>
-
-              {/* Order Info Badge */}
-              <div className="inline-flex flex-wrap items-center justify-center gap-2 sm:gap-4 p-3 rounded-xl bg-slate-900/90 border border-white/10 text-xs text-slate-300 mb-6">
-                <span><strong>Order ID:</strong> <code className="text-yellow-400 font-mono">{orderReceipt.orderId}</code></span>
-                <span className="hidden sm:inline text-slate-600">•</span>
-                <span><strong>Access for:</strong> <span className="text-white">{orderReceipt.email}</span></span>
-              </div>
-
-              {/* 3 Download Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left mb-6">
-                
-                {/* Resource 1 Download Card */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-[#0F172A] border border-yellow-400/30 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] uppercase font-bold text-yellow-400">
-                        RESOURCE 01
-                      </span>
-                      <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
-                        ✓
-                      </span>
-                    </div>
-                    <h4 className="text-sm sm:text-base font-bold text-white mb-1 leading-snug">
-                      Problem Solving & Digital Monetization Guide
-                    </h4>
-                    <p className="text-xs text-slate-400 mb-4">
-                      Identify problems, shape digital opportunities, and think through monetization.
-                    </p>
-                  </div>
-                  <a
-                    href={getDownloadUrl(orderReceipt.resources?.guide?.downloadUrl || `/api/payment/download/${orderReceipt.downloadToken}?resource=guide`)}
-                    onClick={() => handleResourceAccess('guide')}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full inline-flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-xs sm:text-sm py-3 px-4 rounded-xl transition-all cursor-pointer shadow-md"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>DOWNLOAD PDF</span>
-                  </a>
-                </div>
-
-                {/* Resource 2 Download Card (Website Development Strategy PDF) */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-[#0F172A] border border-cyan-400/30 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] uppercase font-bold text-cyan-400">
-                        RESOURCE 02
-                      </span>
-                      <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
-                        ✓
-                      </span>
-                    </div>
-                    <h4 className="text-sm sm:text-base font-bold text-white mb-1 leading-snug">
-                      Antigravity + Claude Interactive Website Build Guide
-                    </h4>
-                    <p className="text-xs text-slate-400 mb-4">
-                      A practical guide for turning an idea into an interactive website using AI-assisted development.
-                    </p>
-                  </div>
-                  <a
-                    href={getDownloadUrl(orderReceipt.resources?.website?.downloadUrl || `/api/payment/download/${orderReceipt.downloadToken}?resource=website`)}
-                    onClick={() => handleResourceAccess('website')}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full inline-flex items-center justify-center gap-2 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black text-xs sm:text-sm py-3 px-4 rounded-xl transition-all cursor-pointer shadow-md"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>DOWNLOAD PDF</span>
-                  </a>
-                </div>
-
-                {/* Resource 3 Download Card */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-[#0F172A] border border-yellow-400/30 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] uppercase font-bold text-yellow-400">
-                        RESOURCE 03
-                      </span>
-                      <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
-                        ✓
-                      </span>
-                    </div>
-                    <h4 className="text-sm sm:text-base font-bold text-white mb-1 leading-snug">
-                      100+ Visual Prompt Shortcuts
-                    </h4>
-                    <p className="text-xs text-slate-400 mb-4">
-                      Ready-to-use visual prompt shortcuts for product shots, ads, website visuals, mockups, carousels, thumbnails and more.
-                    </p>
-                  </div>
-                  <a
-                    href={getDownloadUrl(orderReceipt.resources?.shortcuts?.downloadUrl || `/api/payment/download/${orderReceipt.downloadToken}?resource=shortcuts`)}
-                    onClick={() => handleResourceAccess('shortcuts')}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full inline-flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-xs sm:text-sm py-3 px-4 rounded-xl transition-all cursor-pointer shadow-md"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>DOWNLOAD PDF</span>
-                  </a>
-                </div>
-
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-900/60 border border-white/5 text-xs text-slate-400 max-w-lg mx-auto">
-                Need help or have questions regarding your access? Reach us anytime at{' '}
-                <a href={`mailto:${CONFIG.SUPPORT_EMAIL}`} className="text-yellow-400 underline font-semibold">
-                  {CONFIG.SUPPORT_EMAIL}
-                </a>
-              </div>
+              <span className="font-bold text-[#A6362A]">
+                {claimedCount} of {totalLimit} claimed
+              </span>
             </div>
-          ) : (
-            /* ==================================================
-               CHECKOUT FORM & OFFER DETAILS
-               ================================================== */
-            <div className="max-w-xl mx-auto text-center">
-              
-              {/* Header */}
-              <div className="mb-4">
-                <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-yellow-400 block mb-1">
-                  INSTANT ACCESS
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                  GET THE COMPLETE 3-RESOURCE SYSTEM
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-300 mt-1">
-                  One purchase. Three resources. One complete workflow.
-                </p>
+            <div className="w-full h-2.5 bg-[#F6F0E2] rounded-full overflow-hidden border border-[#15120F]/15">
+              <div
+                className="h-full bg-[#375E42] transition-all duration-500 rounded-full"
+                style={{ width: `${Math.max(4, percentClaimed)}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-[10px] text-[#6B6250] font-mono-ledger mt-1">
+              <span>Current Price: {CONFIG.PRICE}</span>
+              <span className="text-[#A6362A]">Next Tier: {CONFIG.ORIGINAL_PRICE} (at 100 copies)</span>
+            </div>
+          </div>
+
+          {/* Itemized Receipt Breakdown (Explicit Specific Deliverables) */}
+          <div className="space-y-2 my-4 font-mono-ledger text-xs sm:text-[13px]">
+            <div className="flex items-center justify-between text-[#15120F] py-1 border-b border-[#15120F]/10">
+              <div className="flex items-center gap-2">
+                <Check className="w-3.5 h-3.5 text-[#375E42]" />
+                <span>5-Module PDF Guide (Complete Edition)</span>
               </div>
-
-              {/* 3 Deliverables list */}
-              <div className="bg-slate-900/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 mb-5 text-left divide-y divide-white/5">
-                <div className="flex items-center gap-3 py-2 text-xs sm:text-sm font-semibold text-slate-200">
-                  <span className="text-yellow-400 font-mono font-bold text-xs">01</span>
-                  <span>Problem Solving & Digital Monetization Guide</span>
-                </div>
-                <div className="flex items-center gap-3 py-2 text-xs sm:text-sm font-semibold text-slate-200">
-                  <span className="text-cyan-400 font-mono font-bold text-xs">02</span>
-                  <span>Antigravity + Claude Interactive Website Build Guide</span>
-                </div>
-                <div className="flex items-center gap-3 py-2 text-xs sm:text-sm font-semibold text-slate-200">
-                  <span className="text-yellow-400 font-mono font-bold text-xs">03</span>
-                  <span>100+ Visual Prompt Shortcuts</span>
-                </div>
+              <span className="text-[#375E42] font-bold">INCLUDED</span>
+            </div>
+            <div className="flex items-center justify-between text-[#15120F] py-1 border-b border-[#15120F]/10">
+              <div className="flex items-center gap-2">
+                <Check className="w-3.5 h-3.5 text-[#375E42]" />
+                <span>Direct Client Outreach Message Templates</span>
               </div>
+              <span className="text-[#375E42] font-bold">INCLUDED</span>
+            </div>
+            <div className="flex items-center justify-between text-[#15120F] py-1 border-b border-[#15120F]/10">
+              <div className="flex items-center gap-2">
+                <Check className="w-3.5 h-3.5 text-[#375E42]" />
+                <span>First-Offer Pricing & Scope Agreement Template</span>
+              </div>
+              <span className="text-[#375E42] font-bold">INCLUDED</span>
+            </div>
+            <div className="flex items-center justify-between text-[#15120F] py-1 border-b border-[#15120F]/10">
+              <div className="flex items-center gap-2">
+                <Check className="w-3.5 h-3.5 text-[#375E42]" />
+                <span>Step-by-Step Payment Setup & Delivery Checklist</span>
+              </div>
+              <span className="text-[#375E42] font-bold">INCLUDED</span>
+            </div>
+            <div className="flex items-center justify-between text-[#15120F] py-1 border-b border-[#15120F]/10">
+              <div className="flex items-center gap-2">
+                <Check className="w-3.5 h-3.5 text-[#375E42]" />
+                <span>Bonus: Direct Client Action Matrix (Page 38)</span>
+              </div>
+              <span className="text-[#375E42] font-bold">INCLUDED</span>
+            </div>
 
-              {/* Checkout Form */}
-              <form onSubmit={handlePayment} className="space-y-3.5 text-left">
-                
+            {/* Dashed Rule on Price Breakdown */}
+            <div className="dashed-rule my-3" />
 
-                {/* Email Input */}
-                <div>
-                  <label
-                    htmlFor="customer-email-input"
-                    className="block text-xs font-medium text-slate-300 mb-1"
-                  >
-                    Enter your email to receive access:
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Mail className="w-4 h-4" />
-                    </div>
-                    <input
-                      id="customer-email-input"
-                      ref={emailInputRef}
-                      type="email"
-                      required
-                      value={email}
-                      onChange={handleEmailChange}
-                      placeholder="you@example.com"
-                      disabled={ctaState === 'creating' || ctaState === 'verifying'}
-                      className={`w-full bg-slate-900/95 border ${
-                        emailError ? 'border-red-500 ring-1 ring-red-500' : 'border-white/20 focus:border-yellow-400'
-                      } text-white placeholder-slate-500 text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none transition-all`}
-                    />
-                  </div>
-                  {emailError && (
-                    <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                      <span>{emailError}</span>
-                    </p>
-                  )}
+            {/* Subtotal & Final Total Line */}
+            <div className="flex items-center justify-between text-[#6B6250] py-0.5">
+              <span>Standard Batch Price:</span>
+              <span className="line-through">{CONFIG.ORIGINAL_PRICE}</span>
+            </div>
+            <div className="flex items-center justify-between text-base sm:text-lg font-bold text-[#15120F] pt-1">
+              <span className="font-headline text-[#15120F]">FINAL ORDER TOTAL:</span>
+              <span className="text-[#375E42] text-xl sm:text-2xl font-mono-ledger font-extrabold">{CONFIG.PRICE}</span>
+            </div>
+          </div>
+
+          {/* Checkout Form */}
+          <form onSubmit={handlePayment} className="space-y-3 mt-5">
+            
+            {/* Customer Email Input */}
+            <div>
+              <label
+                htmlFor="customer-email-input"
+                className="block text-xs font-mono-ledger uppercase text-[#15120F] font-bold mb-1.5"
+              >
+                Enter your email to receive instant access:
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#6B6250]">
+                  <Mail className="w-4 h-4" />
                 </div>
-
-                {/* Failure / Error message */}
-                {errorMessage && (
-                  <div className="p-2.5 rounded-xl bg-red-950/40 border border-red-500/40 text-red-300 text-xs flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                    <span>{errorMessage}</span>
-                  </div>
-                )}
-
-                {/* Primary CTA Button */}
-                <button
-                  type="submit"
-                  id="offer-primary-cta"
+                <input
+                  id="customer-email-input"
+                  ref={emailInputRef}
+                  type="email"
+                  required
+                  value={email}
+                  onChange={handleEmailChange}
+                  placeholder="you@example.com"
                   disabled={ctaState === 'creating' || ctaState === 'verifying'}
-                  className="group w-full inline-flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-300 active:scale-[0.98] disabled:opacity-80 disabled:cursor-not-allowed text-slate-950 font-black text-base sm:text-lg py-3.5 px-6 rounded-xl transition-all duration-150 text-center cursor-pointer shadow-xl border border-yellow-300"
-                >
-                  {ctaState === 'creating' && (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Initializing checkout...</span>
-                    </>
-                  )}
-
-                  {ctaState === 'razorpay' && (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Opening Checkout...</span>
-                    </>
-                  )}
-
-                  {ctaState === 'verifying' && (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Verifying payment...</span>
-                    </>
-                  )}
-
-                  {ctaState === 'failed' && (
-                    <>
-                      <span>Payment failed — Try again</span>
-                      <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
-                    </>
-                  )}
-
-                  {ctaState === 'idle' && (
-                    <>
-                      <span>GET ALL 3 — {CONFIG.PRICE}</span>
-                      <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
-                    </>
-                  )}
-                </button>
-
-                {/* Single short trust line with Razorpay security */}
-                <div className="flex items-center justify-center gap-1.5 text-xs text-slate-300 font-medium pt-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>Secure 256-bit encrypted checkout via Razorpay</span>
-                </div>
-                <p className="text-center text-[11px] text-slate-400">
-                  All 3 PDFs included • Instant access
+                  className={`w-full bg-[#EDE3CE] border ${
+                    emailError ? 'border-[#A6362A] ring-1 ring-[#A6362A]' : 'border-[#15120F]/25 focus:border-[#375E42]'
+                  } text-[#15120F] placeholder-[#6B6250]/60 font-sans text-sm rounded-xs pl-10 pr-4 py-3 focus:outline-none transition-all`}
+                />
+              </div>
+              {emailError && (
+                <p className="text-xs text-[#A6362A] font-mono-ledger mt-1.5 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{emailError}</span>
                 </p>
-
-                {/* Legal links right under checkout */}
-                <div className="pt-0.5 text-center text-[11px] text-slate-400 leading-relaxed">
-                  By ordering, you agree to our{' '}
-                  <button
-                    type="button"
-                    onClick={() => onOpenModal && onOpenModal('terms')}
-                    className="text-slate-300 underline hover:text-yellow-400 cursor-pointer"
-                  >
-                    Terms
-                  </button>
-                  ,{' '}
-                  <button
-                    type="button"
-                    onClick={() => onOpenModal && onOpenModal('privacy')}
-                    className="text-slate-300 underline hover:text-yellow-400 cursor-pointer"
-                  >
-                    Privacy Policy
-                  </button>
-                  , and{' '}
-                  <button
-                    type="button"
-                    onClick={() => onOpenModal && onOpenModal('refund')}
-                    className="text-slate-300 underline hover:text-yellow-400 cursor-pointer"
-                  >
-                    Refund Policy
-                  </button>
-                  .
-                </div>
-
-              </form>
-
+              )}
             </div>
-          )}
+
+            {/* Error Banner */}
+            {errorMessage && (
+              <div className="p-3 rounded-xs bg-[#A6362A]/10 border border-[#A6362A]/40 text-[#A6362A] text-xs font-mono-ledger flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
+            {/* Primary CTA Button */}
+            <button
+              type="submit"
+              id="offer-primary-cta"
+              disabled={ctaState === 'creating' || ctaState === 'verifying'}
+              className="group w-full inline-flex items-center justify-center gap-2 bg-[#375E42] hover:bg-[#2b4933] active:scale-[0.98] disabled:opacity-80 disabled:cursor-not-allowed text-[#F6F0E2] font-mono-ledger font-bold text-base sm:text-lg py-3.5 px-6 rounded-xs transition-all duration-150 text-center cursor-pointer shadow-md border border-[#233c2a]"
+            >
+              {ctaState === 'creating' && (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Initializing checkout...</span>
+                </>
+              )}
+
+              {ctaState === 'razorpay' && (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Opening Checkout Window...</span>
+                </>
+              )}
+
+              {ctaState === 'verifying' && (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Verifying payment...</span>
+                </>
+              )}
+
+              {ctaState === 'failed' && (
+                <>
+                  <span>Payment failed — Try again</span>
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
+
+              {ctaState === 'idle' && (
+                <>
+                  <span>CLAIM YOUR COPY — {CONFIG.PRICE}</span>
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
+            </button>
+
+            {/* Trust & Security Footnote */}
+            <div className="flex items-center justify-center gap-1.5 text-xs text-[#6B6250] font-mono-ledger pt-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#375E42] shrink-0" />
+              <span>Secure 256-bit encrypted checkout via Razorpay</span>
+            </div>
+
+            {/* Legal Modal Triggers */}
+            <div className="pt-1 text-center font-mono-ledger text-[11px] text-[#6B6250]">
+              By ordering, you agree to our{' '}
+              <button
+                type="button"
+                onClick={() => onOpenModal && onOpenModal('terms')}
+                className="text-[#15120F] underline hover:text-[#375E42] cursor-pointer"
+              >
+                Terms
+              </button>
+              ,{' '}
+              <button
+                type="button"
+                onClick={() => onOpenModal && onOpenModal('privacy')}
+                className="text-[#15120F] underline hover:text-[#375E42] cursor-pointer"
+              >
+                Privacy
+              </button>
+              , and{' '}
+              <button
+                type="button"
+                onClick={() => onOpenModal && onOpenModal('refund')}
+                className="text-[#15120F] underline hover:text-[#375E42] cursor-pointer"
+              >
+                Refund Policy
+              </button>
+              .
+            </div>
+
+          </form>
 
         </div>
 
